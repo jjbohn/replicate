@@ -107,8 +107,6 @@ module Replicate
               local_id
             else
               @wait[referenced_type][remote_id] = [type, id, attributes.clone()]
-              warn "warn: #{referenced_type}(#{remote_id}) not in keymap, " +
-                   "referenced by #{type}(#{id})##{key}, added to wait hash"
             end
           end
         if value.is_a?(Array)
