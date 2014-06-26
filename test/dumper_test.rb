@@ -1,8 +1,8 @@
-require 'test/unit'
+require 'minitest/autorun'
 require 'stringio'
 require 'replicate'
 
-class DumperTest < Test::Unit::TestCase
+class DumperTest < Minitest::Test
   def setup
     @dumper = Replicate::Dumper.new
   end

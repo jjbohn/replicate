@@ -1,8 +1,8 @@
-require 'test/unit'
+require 'minitest/autorun'
 require 'stringio'
 require 'replicate'
 
-class LoaderTest < Test::Unit::TestCase
+class LoaderTest < Minitest::Test
   def setup
     @loader = Replicate::Loader.new
   end

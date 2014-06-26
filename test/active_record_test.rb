@@ -1,4 +1,4 @@
-require 'test/unit'
+require 'minitest/autorun'
 require 'stringio'
 
 # require a specific AR version.
@@ -96,7 +96,7 @@ end
 
 # The test case loads some fixture data once and uses transaction rollback to
 # reset fixture state for each test's setup.
-class ActiveRecordTest < Test::Unit::TestCase
+class ActiveRecordTest < Minitest::Test
   def setup
     self.class.fixtures
     ActiveRecord::Base.connection.increment_open_transactions

@@ -1,6 +1,6 @@
-require 'test/unit'
+require 'minitest/autorun'
 
-class ReplicateTest < Test::Unit::TestCase
+class ReplicateTest < Minitest::Test
   def test_auto_loading
     require 'replicate'
     Replicate::Dumper
