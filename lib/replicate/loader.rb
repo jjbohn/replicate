@@ -16,7 +16,7 @@ module Replicate
 
     def initialize
       @keymap = Hash.new { |hash,k| hash[k] = {} }
-      @wait   = Hash.new { |hash,k| hash[k] = [] }
+      @wait   = Hash.new { |hash,k| hash[k] = {} }
       @stats  = Hash.new { |hash,k| hash[k] = 0 }
       super
     end
