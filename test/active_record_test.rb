@@ -56,6 +56,18 @@ ActiveRecord::Schema.define do
   end
 
   create_table "namespaced", :force => true
+
+  create_table "orders", :force => true do |t|
+    t.string  "name"
+    t.integer "last_state_id"
+  end
+
+  create_table "states", :force => true do |t|
+    t.string    "name"
+    t.datetime  "created_at"
+    t.datetime  "updated_at"
+    t.integer   "order_id"
+  end
 end
 
 # models
@@ -92,6 +104,15 @@ end
 
 class User::Namespaced < ActiveRecord::Base
   self.table_name = "namespaced"
+end
+
+class Order < ActiveRecord::Base
+  has_many    :states
+  belongs_to  :last_state, :class_name => 'State'
+end
+
+class State < ActiveRecord::Base
+  belongs_to  :order
 end
 
 # The test case loads some fixture data once and uses transaction rollback to
@@ -192,6 +213,59 @@ class ActiveRecordTest < Minitest::Test
 
     type, id, attrs, obj = objects.shift
     assert_equal 'User', type
+  end
+
+  def test_dump_and_load_correctly_despite_association_cycle
+    objects = []
+    @dumper.listen { |type, id, attrs, obj| objects << [type, id, attrs, obj] }
+
+    Order.replicate_associations :states
+    o = Order.create! :name => 'beer'
+    s1 = State.create! :name => 'ordered', :order => o
+    s2 = State.create! :name => 'paid', :order => o
+    o.last_state = s2
+    o.save!
+
+    @dumper.dump o
+
+    assert_equal 3, objects.size
+
+    # last state is resolved by Order belongs_to and is dumped first
+    type, id, attrs, obj = objects[0]
+    assert_equal 'State', type
+    assert_equal 2, attrs['id']
+    assert_equal [:id, "Order", 1], attrs['order_id']
+
+    # next comes the order itself
+    type, id, attrs, obj = objects[1]
+    assert_equal 'Order', type
+    assert_equal 1, attrs['id']
+    assert_equal [:id, "State", 2], attrs['last_state_id']
+
+    # and finally the has_many states, in this case just one left
+    type, id, attrs, obj = objects[2]
+    assert_equal 'State', type
+    assert_equal 1, attrs['id']
+    assert_equal [:id, "Order", 1], attrs['order_id']
+
+    # destroy objects
+    State.delete_all
+    Order.delete_all
+
+    assert_equal 0, Order.all.count
+    assert_equal 0, State.all.count
+
+    assert_equal 3, objects.size
+
+    # restore dump
+    objects.each { |type, id, attrs, obj| @loader.feed type, id, attrs }
+
+    assert_equal 1, Order.all.count
+    assert_equal 2, State.all.count
+    # all states correctly linked to order?
+    assert_equal false, State.all.map {|s| s.order == Order.first}.include?(false)
+    # order linked to existing last_state?
+    assert_equal true, State.all.include?(Order.first.last_state)
   end
 
   if ActiveRecord::VERSION::STRING[0, 3] > '2.2'

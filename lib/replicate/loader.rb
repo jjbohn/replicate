@@ -16,6 +16,7 @@ module Replicate
 
     def initialize
       @keymap = Hash.new { |hash,k| hash[k] = {} }
+      @wait   = Hash.new { |hash,k| hash[k] = [] }
       @stats  = Hash.new { |hash,k| hash[k] = 0 }
       super
     end
@@ -67,13 +68,18 @@ module Replicate
     # id    - Primary key id of the record on the dump system. This must be
     #         translated to the local system and stored in the keymap.
     # attrs - Hash of attributes to set on the new record.
+    # local_id - to reload an object with given local id
     #
     # Returns the new object instance.
-    def load(type, id, attributes)
+    def load(type, id, attributes, local_id = nil)
       model_class = constantize(type)
       translate_ids type, id, attributes
       begin
-        new_id, instance = model_class.load_replicant(type, id, attributes)
+        if not local_id.nil?
+          new_id, instance = model_class.load_replicant(type, id, attributes, local_id)
+        else
+          new_id, instance = model_class.load_replicant(type, id, attributes)
+        end
       rescue => boom
         warn "error: loading #{type} #{id} #{boom.class} #{boom}"
         raise
@@ -100,8 +106,9 @@ module Replicate
             if local_id = @keymap[referenced_type][remote_id]
               local_id
             else
+              @wait[referenced_type][remote_id] = [type, id, attributes.clone()]
               warn "warn: #{referenced_type}(#{remote_id}) not in keymap, " +
-                   "referenced by #{type}(#{id})##{key}"
+                   "referenced by #{type}(#{id})##{key}, added to wait hash"
             end
           end
         if value.is_a?(Array)
@@ -120,6 +127,11 @@ module Replicate
       while !['Object', 'ActiveRecord::Base'].include?(c.name)
         @keymap[c.name][remote_id] = local_id
         c = c.superclass
+      end
+      if not @wait[type][remote_id].nil?
+        waiting_type, waiting_id, waiting_attributes = @wait[type][remote_id]
+        @wait[type].delete(remote_id)
+        load(waiting_type, waiting_id, waiting_attributes, @keymap[waiting_type][waiting_id])
       end
     end
 

@@ -252,10 +252,11 @@ module Replicate
       # id    - Primary key id of the record on the dump system. This must be
       #         translated to the local system and stored in the keymap.
       # attrs - Hash of attributes to set on the new record.
+      # local_id - to reload an object with given local id
       #
       # Returns the ActiveRecord object instance for the new record.
-      def load_replicant(type, id, attributes)
-        instance = replicate_find_existing_record(attributes) || new
+      def load_replicant(type, id, attributes, local_id = nil)
+        instance = replicate_find_existing_record(attributes, local_id) || new
         create_or_update_replicant instance, attributes
       end
 
@@ -263,7 +264,8 @@ module Replicate
       # values.
       #
       # Returns the existing record if found, nil otherwise.
-      def replicate_find_existing_record(attributes)
+      def replicate_find_existing_record(attributes, id = nil)
+        return find_by_id(id) if not id.nil? and not find_by_id(id).nil?
         return if replicate_natural_key.empty?
         conditions = {}
         replicate_natural_key.each do |attribute_name|
